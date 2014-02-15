@@ -8,7 +8,6 @@ package bolts;
 import java.util.ArrayList;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import junit.framework.TestCase;
@@ -459,15 +458,11 @@ public class TaskTest extends TestCase {
                     }
                 }, new Continuation<Void, Task<Void>>() {
                     public Task<Void> then(Task<Void> task) throws Exception {
-                        count.incrementAndGet();
-                        return null;
-                    }
-                }, Executors.newCachedThreadPool()).continueWith(new Continuation<Void, Void>() {
-                    public Void then(Task<Void> task) throws Exception {
-                        assertEquals(10, count.get());
-                        return null;
-                    }
-                });
+                                                                  count.incrementAndGet();
+                                                                  return null;
+                                                              }
+                                                          }
+                );
             }
         });
     }

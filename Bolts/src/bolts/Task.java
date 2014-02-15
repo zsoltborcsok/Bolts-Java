@@ -9,11 +9,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Callable;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Represents the result of an asynchronous operation.
@@ -22,63 +17,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  *            The type of the result of the task.
  */
 public class Task<TResult> {
-    private static final ExecutorService backgroundExecutor = Executors.newCachedThreadPool();
-    /**
-     * An executor that runs a runnable inline (rather than scheduling it on a thread pool) as long as the recursion
-     * depth is less than MAX_DEPTH. If the executor has recursed too deeply, it will instead delegate to the
-     * backgroundExecutor in order to trim the stack.
-     */
-    private static final Executor immediateExecutor = new Executor() {
-        private static final int MAX_DEPTH = 15;
-        private ThreadLocal<Integer> executionDepth = new ThreadLocal<Integer>();
-
-        /**
-         * Increments the depth.
-         * 
-         * @return the new depth value.
-         */
-        private int incrementDepth() {
-            Integer oldDepth = executionDepth.get();
-            if (oldDepth == null) {
-                oldDepth = 0;
-            }
-            int newDepth = oldDepth.intValue() + 1;
-            executionDepth.set(newDepth);
-            return newDepth;
-        }
-
-        /**
-         * Decrements the depth.
-         * 
-         * @return the new depth value.
-         */
-        private int decrementDepth() {
-            Integer oldDepth = executionDepth.get();
-            if (oldDepth == null) {
-                oldDepth = 0;
-            }
-            int newDepth = oldDepth.intValue() - 1;
-            if (newDepth == 0) {
-                executionDepth.remove();
-            } else {
-                executionDepth.set(newDepth);
-            }
-            return newDepth;
-        }
-
-        public void execute(Runnable command) {
-            int depth = incrementDepth();
-            try {
-                if (depth <= MAX_DEPTH) {
-                    command.run();
-                } else {
-                    backgroundExecutor.execute(command);
-                }
-            } finally {
-                decrementDepth();
-            }
-        }
-    };
     private final Object lock = new Object();
     private boolean complete;
     private boolean cancelled;
@@ -216,31 +154,20 @@ public class Task<TResult> {
      * operation.
      */
     public static <TResult> Task<TResult> callInBackground(Callable<TResult> callable) {
-        return call(callable, backgroundExecutor);
-    }
-
-    /**
-     * Invokes the callable using the given executor, returning a Task to represent the operation.
-     */
-    public static <TResult> Task<TResult> call(final Callable<TResult> callable, Executor executor) {
-        final Task<TResult>.TaskCompletionSource tcs = Task.<TResult> create();
-        executor.execute(new Runnable() {
-            public void run() {
-                try {
-                    tcs.setResult(callable.call());
-                } catch (Exception e) {
-                    tcs.setError(e);
-                }
-            }
-        });
-        return tcs.getTask();
+        return call(callable);
     }
 
     /**
      * Invokes the callable on the current thread, producing a Task.
      */
     public static <TResult> Task<TResult> call(final Callable<TResult> callable) {
-        return call(callable, immediateExecutor);
+        final Task<TResult>.TaskCompletionSource tcs = Task.<TResult> create();
+        try {
+            tcs.setResult(callable.call());
+        } catch (Exception e) {
+            tcs.setError(e);
+        }
+        return tcs.getTask();
     }
 
     /**
@@ -254,8 +181,8 @@ public class Task<TResult> {
         final Task<Void>.TaskCompletionSource allFinished = Task.<Void> create();
         final ArrayList<Exception> errors = new ArrayList<Exception>();
         final Object errorLock = new Object();
-        final AtomicInteger count = new AtomicInteger(tasks.size());
-        final AtomicBoolean isCancelled = new AtomicBoolean(false);
+        final Integer[] count = new Integer[] { tasks.size() };
+        final Boolean[] isCancelled = new Boolean[] { false };
 
         for (Task<?> task : tasks) {
             @SuppressWarnings("unchecked")
@@ -270,17 +197,18 @@ public class Task<TResult> {
                     }
 
                     if (task.isCancelled()) {
-                        isCancelled.set(true);
+                        isCancelled[0] = true;
                     }
 
-                    if (count.decrementAndGet() == 0) {
+                    count[0] = count[0] - 1;
+                    if (count[0] == 0) {
                         if (errors.size() != 0) {
                             if (errors.size() == 1) {
                                 allFinished.setError(errors.get(0));
                             } else {
                                 allFinished.setError(new AggregateException(errors));
                             }
-                        } else if (isCancelled.get()) {
+                        } else if (isCancelled[0]) {
                             allFinished.setCancelled();
                         } else {
                             allFinished.setResult(null);
@@ -298,52 +226,18 @@ public class Task<TResult> {
      * Continues a task with the equivalent of a Task-based while loop, where the body of the loop is a task
      * continuation.
      */
-    public Task<Void> continueWhile(Callable<Boolean> predicate, Continuation<Void, Task<Void>> continuation) {
-        return continueWhile(predicate, continuation, immediateExecutor);
-    }
-
-    /**
-     * Continues a task with the equivalent of a Task-based while loop, where the body of the loop is a task
-     * continuation.
-     */
-    public Task<Void> continueWhile(final Callable<Boolean> predicate,
-            final Continuation<Void, Task<Void>> continuation, final Executor executor) {
+    public Task<Void> continueWhile(final Callable<Boolean> predicate, final Continuation<Void, Task<Void>> continuation) {
         final Capture<Continuation<Void, Task<Void>>> predicateContinuation = new Capture<Continuation<Void, Task<Void>>>();
         predicateContinuation.set(new Continuation<Void, Task<Void>>() {
             public Task<Void> then(Task<Void> task) throws Exception {
                 if (predicate.call()) {
-                    return Task.<Void> forResult(null).onSuccessTask(continuation, executor)
-                            .onSuccessTask(predicateContinuation.get(), executor);
+                    return Task.<Void> forResult(null).onSuccessTask(continuation)
+                            .onSuccessTask(predicateContinuation.get());
                 }
                 return Task.forResult(null);
             }
         });
-        return makeVoid().continueWithTask(predicateContinuation.get(), executor);
-    }
-
-    /**
-     * Adds a continuation that will be scheduled using the executor, returning a new task that completes after the
-     * continuation has finished running. This allows the continuation to be scheduled on different thread.
-     */
-    public <TContinuationResult> Task<TContinuationResult> continueWith(
-            final Continuation<TResult, TContinuationResult> continuation, final Executor executor) {
-        boolean completed = false;
-        final Task<TContinuationResult>.TaskCompletionSource tcs = Task.<TContinuationResult> create();
-        synchronized (lock) {
-            completed = this.isCompleted();
-            if (!completed) {
-                this.continuations.add(new Continuation<TResult, Void>() {
-                    public Void then(Task<TResult> task) {
-                        completeImmediately(tcs, continuation, task, executor);
-                        return null;
-                    }
-                });
-            }
-        }
-        if (completed) {
-            completeImmediately(tcs, continuation, this, executor);
-        }
-        return tcs.getTask();
+        return makeVoid().continueWithTask(predicateContinuation.get());
     }
 
     /**
@@ -351,16 +245,7 @@ public class Task<TResult> {
      * finished running.
      */
     public <TContinuationResult> Task<TContinuationResult> continueWith(
-            Continuation<TResult, TContinuationResult> continuation) {
-        return continueWith(continuation, immediateExecutor);
-    }
-
-    /**
-     * Adds an Task-based continuation to this task that will be scheduled using the executor, returning a new task that
-     * completes after the task returned by the continuation has completed.
-     */
-    public <TContinuationResult> Task<TContinuationResult> continueWithTask(
-            final Continuation<TResult, Task<TContinuationResult>> continuation, final Executor executor) {
+            final Continuation<TResult, TContinuationResult> continuation) {
         boolean completed = false;
         final Task<TContinuationResult>.TaskCompletionSource tcs = Task.<TContinuationResult> create();
         synchronized (lock) {
@@ -368,14 +253,24 @@ public class Task<TResult> {
             if (!completed) {
                 this.continuations.add(new Continuation<TResult, Void>() {
                     public Void then(Task<TResult> task) {
-                        completeAfterTask(tcs, continuation, task, executor);
+                        try {
+                            TContinuationResult result = continuation.then(task);
+                            tcs.setResult(result);
+                        } catch (Exception e) {
+                            tcs.setError(e);
+                        }
                         return null;
                     }
                 });
             }
         }
         if (completed) {
-            completeAfterTask(tcs, continuation, this, executor);
+            try {
+                TContinuationResult result = continuation.then(this);
+                tcs.setResult(result);
+            } catch (Exception e) {
+                tcs.setError(e);
+            }
         }
         return tcs.getTask();
     }
@@ -385,15 +280,31 @@ public class Task<TResult> {
      * the continuation has completed.
      */
     public <TContinuationResult> Task<TContinuationResult> continueWithTask(
-            Continuation<TResult, Task<TContinuationResult>> continuation) {
-        return continueWithTask(continuation, immediateExecutor);
+            final Continuation<TResult, Task<TContinuationResult>> continuation) {
+        boolean completed = false;
+        final Task<TContinuationResult>.TaskCompletionSource tcs = Task.<TContinuationResult> create();
+        synchronized (lock) {
+            completed = this.isCompleted();
+            if (!completed) {
+                this.continuations.add(new Continuation<TResult, Void>() {
+                    public Void then(Task<TResult> task) {
+                        completeAfterTask(tcs, continuation, task);
+                        return null;
+                    }
+                });
+            }
+        }
+        if (completed) {
+            completeAfterTask(tcs, continuation, this);
+        }
+        return tcs.getTask();
     }
 
     /**
      * Runs a continuation when a task completes successfully, forwarding along errors or cancellation.
      */
     public <TContinuationResult> Task<TContinuationResult> onSuccess(
-            final Continuation<TResult, TContinuationResult> continuation, Executor executor) {
+            final Continuation<TResult, TContinuationResult> continuation) {
         return continueWithTask(new Continuation<TResult, Task<TContinuationResult>>() {
             public Task<TContinuationResult> then(Task<TResult> task) {
                 if (task.isFaulted()) {
@@ -404,22 +315,14 @@ public class Task<TResult> {
                     return task.continueWith(continuation);
                 }
             }
-        }, executor);
-    }
-
-    /**
-     * Runs a continuation when a task completes successfully, forwarding along errors or cancellation.
-     */
-    public <TContinuationResult> Task<TContinuationResult> onSuccess(
-            final Continuation<TResult, TContinuationResult> continuation) {
-        return onSuccess(continuation, immediateExecutor);
+        });
     }
 
     /**
      * Runs a continuation when a task completes successfully, forwarding along errors or cancellation.
      */
     public <TContinuationResult> Task<TContinuationResult> onSuccessTask(
-            final Continuation<TResult, Task<TContinuationResult>> continuation, Executor executor) {
+            final Continuation<TResult, Task<TContinuationResult>> continuation) {
         return continueWithTask(new Continuation<TResult, Task<TContinuationResult>>() {
             public Task<TContinuationResult> then(Task<TResult> task) {
                 if (task.isFaulted()) {
@@ -428,44 +331,6 @@ public class Task<TResult> {
                     return Task.<TContinuationResult> cancelled();
                 } else {
                     return task.continueWithTask(continuation);
-                }
-            }
-        }, executor);
-    }
-
-    /**
-     * Runs a continuation when a task completes successfully, forwarding along errors or cancellation.
-     */
-    public <TContinuationResult> Task<TContinuationResult> onSuccessTask(
-            final Continuation<TResult, Task<TContinuationResult>> continuation) {
-        return onSuccessTask(continuation, immediateExecutor);
-    }
-
-    /**
-     * Handles the non-async (i.e. the continuation doesn't return a Task) continuation case, passing the results of the
-     * given Task through to the given continuation and using the results of that call to set the result of the
-     * TaskContinuationSource.
-     * 
-     * @param tcs
-     *            The TaskContinuationSource that will be orchestrated by this call.
-     * @param continuation
-     *            The non-async continuation.
-     * @param task
-     *            The task being completed.
-     * @param executor
-     *            The executor to use when running the continuation (allowing the continuation to be scheduled on a
-     *            different thread).
-     */
-    private static <TContinuationResult, TResult> void completeImmediately(
-            final Task<TContinuationResult>.TaskCompletionSource tcs,
-            final Continuation<TResult, TContinuationResult> continuation, final Task<TResult> task, Executor executor) {
-        executor.execute(new Runnable() {
-            public void run() {
-                try {
-                    TContinuationResult result = continuation.then(task);
-                    tcs.setResult(result);
-                } catch (Exception e) {
-                    tcs.setError(e);
                 }
             }
         });
@@ -482,39 +347,31 @@ public class Task<TResult> {
      *            The async continuation.
      * @param task
      *            The task being completed.
-     * @param executor
-     *            The executor to use when running the continuation (allowing the continuation to be scheduled on a
-     *            different thread).
      */
     private static <TContinuationResult, TResult> void completeAfterTask(
             final Task<TContinuationResult>.TaskCompletionSource tcs,
-            final Continuation<TResult, Task<TContinuationResult>> continuation, final Task<TResult> task,
-            final Executor executor) {
-        executor.execute(new Runnable() {
-            public void run() {
-                try {
-                    Task<TContinuationResult> result = continuation.then(task);
-                    if (result == null) {
-                        tcs.setResult(null);
-                    } else {
-                        result.continueWith(new Continuation<TContinuationResult, Void>() {
-                            public Void then(Task<TContinuationResult> task) {
-                                if (task.isCancelled()) {
-                                    tcs.setCancelled();
-                                } else if (task.isFaulted()) {
-                                    tcs.setError(task.getError());
-                                } else {
-                                    tcs.setResult(task.getResult());
-                                }
-                                return null;
-                            }
-                        });
+            final Continuation<TResult, Task<TContinuationResult>> continuation, final Task<TResult> task) {
+        try {
+            Task<TContinuationResult> result = continuation.then(task);
+            if (result == null) {
+                tcs.setResult(null);
+            } else {
+                result.continueWith(new Continuation<TContinuationResult, Void>() {
+                    public Void then(Task<TContinuationResult> task) {
+                        if (task.isCancelled()) {
+                            tcs.setCancelled();
+                        } else if (task.isFaulted()) {
+                            tcs.setError(task.getError());
+                        } else {
+                            tcs.setResult(task.getResult());
+                        }
+                        return null;
                     }
-                } catch (Exception e) {
-                    tcs.setError(e);
-                }
+                });
             }
-        });
+        } catch (Exception e) {
+            tcs.setError(e);
+        }
     }
 
     private void runContinuations() {
@@ -620,7 +477,7 @@ public class Task<TResult> {
         public void setError(Exception error) {
             if (!trySetError(error)) {
                 throw new IllegalStateException("Cannot set the error on a completed task.");
-      }
+            }
+        }
     }
-  }
 }
