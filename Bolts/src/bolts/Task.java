@@ -99,7 +99,7 @@ public class Task<TResult> {
      * Creates a completed task with the given value.
      */
     public static <TResult> Task<TResult> forResult(TResult value) {
-        Task<TResult>.TaskCompletionSource tcs = Task.<TResult> create();
+        Task<TResult>.TaskCompletionSource tcs = Task.create();
         tcs.setResult(value);
         return tcs.getTask();
     }
@@ -108,7 +108,7 @@ public class Task<TResult> {
      * Creates a faulted task with the given error.
      */
     public static <TResult> Task<TResult> forError(Exception error) {
-        Task<TResult>.TaskCompletionSource tcs = Task.<TResult> create();
+        Task<TResult>.TaskCompletionSource tcs = Task.create();
         tcs.setError(error);
         return tcs.getTask();
     }
@@ -117,7 +117,7 @@ public class Task<TResult> {
      * Creates a cancelled task with the given error.
      */
     public static <TResult> Task<TResult> cancelled() {
-        Task<TResult>.TaskCompletionSource tcs = Task.<TResult> create();
+        Task<TResult>.TaskCompletionSource tcs = Task.create();
         tcs.setCancelled();
         return tcs.getTask();
     }
@@ -150,18 +150,10 @@ public class Task<TResult> {
     }
 
     /**
-     * Invokes the callable on a background thread using the default thread pool, returning a Task to represent the
-     * operation.
-     */
-    public static <TResult> Task<TResult> callInBackground(Callable<TResult> callable) {
-        return call(callable);
-    }
-
-    /**
      * Invokes the callable on the current thread, producing a Task.
      */
     public static <TResult> Task<TResult> call(final Callable<TResult> callable) {
-        final Task<TResult>.TaskCompletionSource tcs = Task.<TResult> create();
+        final Task<TResult>.TaskCompletionSource tcs = Task.create();
         try {
             tcs.setResult(callable.call());
         } catch (Exception e) {
@@ -178,7 +170,7 @@ public class Task<TResult> {
             return Task.forResult(null);
         }
 
-        final Task<Void>.TaskCompletionSource allFinished = Task.<Void> create();
+        final Task<Void>.TaskCompletionSource allFinished = Task.create();
         final ArrayList<Exception> errors = new ArrayList<Exception>();
         final Object errorLock = new Object();
         final Integer[] count = new Integer[] { tasks.size() };
@@ -247,7 +239,7 @@ public class Task<TResult> {
     public <TContinuationResult> Task<TContinuationResult> continueWith(
             final Continuation<TResult, TContinuationResult> continuation) {
         boolean completed = false;
-        final Task<TContinuationResult>.TaskCompletionSource tcs = Task.<TContinuationResult> create();
+        final Task<TContinuationResult>.TaskCompletionSource tcs = Task.create();
         synchronized (lock) {
             completed = this.isCompleted();
             if (!completed) {
@@ -282,7 +274,7 @@ public class Task<TResult> {
     public <TContinuationResult> Task<TContinuationResult> continueWithTask(
             final Continuation<TResult, Task<TContinuationResult>> continuation) {
         boolean completed = false;
-        final Task<TContinuationResult>.TaskCompletionSource tcs = Task.<TContinuationResult> create();
+        final Task<TContinuationResult>.TaskCompletionSource tcs = Task.create();
         synchronized (lock) {
             completed = this.isCompleted();
             if (!completed) {
@@ -308,9 +300,9 @@ public class Task<TResult> {
         return continueWithTask(new Continuation<TResult, Task<TContinuationResult>>() {
             public Task<TContinuationResult> then(Task<TResult> task) {
                 if (task.isFaulted()) {
-                    return Task.<TContinuationResult> forError(task.getError());
+                    return Task.forError(task.getError());
                 } else if (task.isCancelled()) {
-                    return Task.<TContinuationResult> cancelled();
+                    return Task.cancelled();
                 } else {
                     return task.continueWith(continuation);
                 }
@@ -326,9 +318,9 @@ public class Task<TResult> {
         return continueWithTask(new Continuation<TResult, Task<TContinuationResult>>() {
             public Task<TContinuationResult> then(Task<TResult> task) {
                 if (task.isFaulted()) {
-                    return Task.<TContinuationResult> forError(task.getError());
+                    return Task.forError(task.getError());
                 } else if (task.isCancelled()) {
-                    return Task.<TContinuationResult> cancelled();
+                    return Task.cancelled();
                 } else {
                     return task.continueWithTask(continuation);
                 }
