@@ -85,17 +85,6 @@ public class Task<TResult> {
     }
 
     /**
-     * Blocks until the task is complete.
-     */
-    public void waitForCompletion() throws InterruptedException {
-        synchronized (lock) {
-            if (!isCompleted()) {
-                lock.wait();
-            }
-        }
-    }
-
-    /**
      * Creates a completed task with the given value.
      */
     public static <TResult> Task<TResult> forResult(TResult value) {
@@ -407,7 +396,6 @@ public class Task<TResult> {
                 }
                 complete = true;
                 cancelled = true;
-                lock.notifyAll();
                 runContinuations();
                 return true;
             }
@@ -423,7 +411,6 @@ public class Task<TResult> {
                 }
                 complete = true;
                 Task.this.result = result;
-                lock.notifyAll();
                 runContinuations();
                 return true;
             }
@@ -439,7 +426,6 @@ public class Task<TResult> {
                 }
                 complete = true;
                 Task.this.error = error;
-                lock.notifyAll();
                 runContinuations();
                 return true;
             }

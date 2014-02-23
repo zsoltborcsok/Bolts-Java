@@ -16,7 +16,6 @@ public class TaskTest extends TestCase {
     private void runTaskTest(Callable<Task<?>> callable) {
         try {
             Task<?> task = callable.call();
-            task.waitForCompletion();
             if (task.isFaulted()) {
                 Exception error = task.getError();
                 if (error instanceof RuntimeException) {
@@ -134,7 +133,6 @@ public class TaskTest extends TestCase {
                 return 5;
             }
         });
-        task.waitForCompletion();
         assertTrue(task.isCompleted());
         assertEquals(5, task.getResult().intValue());
     }
@@ -146,7 +144,6 @@ public class TaskTest extends TestCase {
                 throw new RuntimeException();
             }
         });
-        task.waitForCompletion();
         assertTrue(task.isCompleted());
         assertTrue(task.isFaulted());
     }
@@ -163,7 +160,6 @@ public class TaskTest extends TestCase {
                 return Task.cancelled();
             }
         });
-        task.waitForCompletion();
         assertTrue(task.isCompleted());
         assertTrue(task.isCancelled());
     }
