@@ -3,7 +3,7 @@
  * found in the LICENSE file in the root directory of this source tree. An additional grant of patent rights can be
  * found in the PATENTS file in the same directory.
  */
-package bolts;
+package bolts.java;
 
 import java.util.ArrayList;
 import java.util.concurrent.Callable;
@@ -112,7 +112,7 @@ public class TaskTest extends TestCase {
     public void testBackgroundCall() {
         runTaskTest(new Callable<Task<?>>() {
             public Task<?> call() throws Exception {
-                return Task.callInBackground(new Callable<Integer>() {
+                return Task.call(new Callable<Integer>() {
                     public Integer call() throws Exception {
                         Thread.sleep(100);
                         return 5;
@@ -128,7 +128,7 @@ public class TaskTest extends TestCase {
     }
 
     public void testBackgroundCallWaiting() throws Exception {
-        Task<Integer> task = Task.callInBackground(new Callable<Integer>() {
+        Task<Integer> task = Task.call(new Callable<Integer>() {
             public Integer call() throws Exception {
                 Thread.sleep(100);
                 return 5;
@@ -140,7 +140,7 @@ public class TaskTest extends TestCase {
     }
 
     public void testBackgroundCallWaitingOnError() throws Exception {
-        Task<Integer> task = Task.callInBackground(new Callable<Integer>() {
+        Task<Integer> task = Task.call(new Callable<Integer>() {
             public Integer call() throws Exception {
                 Thread.sleep(100);
                 throw new RuntimeException();
@@ -152,7 +152,7 @@ public class TaskTest extends TestCase {
     }
 
     public void testBackgroundCallWaitOnCancellation() throws Exception {
-        Task<Integer> task = Task.callInBackground(new Callable<Integer>() {
+        Task<Integer> task = Task.call(new Callable<Integer>() {
             public Integer call() throws Exception {
                 Thread.sleep(100);
                 return 5;
@@ -171,7 +171,7 @@ public class TaskTest extends TestCase {
     public void testBackgroundError() {
         runTaskTest(new Callable<Task<?>>() {
             public Task<?> call() throws Exception {
-                return Task.callInBackground(new Callable<Integer>() {
+                return Task.call(new Callable<Integer>() {
                     public Integer call() throws Exception {
                         throw new IllegalStateException();
                     }
@@ -192,7 +192,7 @@ public class TaskTest extends TestCase {
             public Task<?> call() throws Exception {
                 final ArrayList<Task<Void>> tasks = new ArrayList<Task<Void>>();
                 for (int i = 0; i < 20; i++) {
-                    Task<Void> task = Task.callInBackground(new Callable<Void>() {
+                    Task<Void> task = Task.call(new Callable<Void>() {
                         @Override
                         public Void call() throws Exception {
                             Thread.sleep((long) (Math.random() * 1000));
@@ -227,7 +227,7 @@ public class TaskTest extends TestCase {
                 final ArrayList<Task<Void>> tasks = new ArrayList<Task<Void>>();
                 for (int i = 0; i < 20; i++) {
                     final int number = i;
-                    Task<Void> task = Task.callInBackground(new Callable<Void>() {
+                    Task<Void> task = Task.call(new Callable<Void>() {
                         @Override
                         public Void call() throws Exception {
                             Thread.sleep((long) (Math.random() * 1000));
@@ -268,7 +268,7 @@ public class TaskTest extends TestCase {
                 final ArrayList<Task<Void>> tasks = new ArrayList<Task<Void>>();
                 for (int i = 0; i < 20; i++) {
                     final int number = i;
-                    Task<Void> task = Task.callInBackground(new Callable<Void>() {
+                    Task<Void> task = Task.call(new Callable<Void>() {
                         @Override
                         public Void call() throws Exception {
                             Thread.sleep((long) (Math.random() * 1000));
@@ -311,7 +311,7 @@ public class TaskTest extends TestCase {
                     final Task<Void>.TaskCompletionSource tcs = Task.create();
 
                     final int number = i;
-                    Task.callInBackground(new Callable<Void>() {
+                    Task.call(new Callable<Void>() {
                         @Override
                         public Void call() throws Exception {
                             Thread.sleep((long) (Math.random() * 1000));
@@ -352,7 +352,7 @@ public class TaskTest extends TestCase {
                     final int taskNumber = i;
                     result = result.continueWithTask(new Continuation<Void, Task<Void>>() {
                         public Task<Void> then(Task<Void> task) {
-                            return Task.callInBackground(new Callable<Void>() {
+                            return Task.call(new Callable<Void>() {
                                 public Void call() throws Exception {
                                     sequence.add(taskNumber);
                                     return null;

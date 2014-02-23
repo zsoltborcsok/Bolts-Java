@@ -17,6 +17,16 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <directory>Bolts/src</directory>
+                <includes>
+                    <include>**/*.java</include>
+                    <include>**/*.gwt.xml</include>
+                </includes>
+            </resource>
+        </resources>
+
         <sourceDirectory>Bolts/src</sourceDirectory>
         <testSourceDirectory>BoltsTest/src</testSourceDirectory>
     </build>
