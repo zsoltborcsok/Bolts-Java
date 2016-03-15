@@ -5,6 +5,8 @@
  */
 package bolts.java;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -13,18 +15,20 @@ import java.util.List;
 public class AggregateException extends Exception {
     private static final long serialVersionUID = 1L;
 
-    private List<Exception> errors;
-
     public AggregateException(List<Exception> errors) {
         super("There were multiple errors.");
 
-        this.errors = errors;
+        for (Exception error : errors) {
+            addSuppressed(error);
+        }
     }
 
     /**
      * Returns the list of errors that this exception encapsulates.
      */
-    public List<Exception> getErrors() {
-        return errors;
+    public List<Throwable> getErrors() {
+        ArrayList<Throwable> exceptions = new ArrayList<Throwable>();
+        Collections.addAll(exceptions, getSuppressed());
+        return exceptions;
     }
 }
