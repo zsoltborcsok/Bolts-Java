@@ -10,6 +10,8 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.Assert;
+
 import junit.framework.TestCase;
 
 public class TaskTest extends TestCase {
@@ -35,19 +37,19 @@ public class TaskTest extends TestCase {
         Task<Integer> error = Task.forError(new RuntimeException());
         Task<Integer> cancelled = Task.cancelled();
 
-        assertTrue(complete.isCompleted());
-        assertEquals(5, complete.getResult().intValue());
-        assertFalse(complete.isFaulted());
-        assertFalse(complete.isCancelled());
+        Assert.assertTrue(complete.isCompleted());
+        Assert.assertEquals(5, complete.getResult().intValue());
+        Assert.assertFalse(complete.isFaulted());
+        Assert.assertFalse(complete.isCancelled());
 
-        assertTrue(error.isCompleted());
-        assertTrue(error.getError() instanceof RuntimeException);
-        assertTrue(error.isFaulted());
-        assertFalse(error.isCancelled());
+        Assert.assertTrue(error.isCompleted());
+        Assert.assertTrue(error.getError() instanceof RuntimeException);
+        Assert.assertTrue(error.isFaulted());
+        Assert.assertFalse(error.isCancelled());
 
-        assertTrue(cancelled.isCompleted());
-        assertFalse(cancelled.isFaulted());
-        assertTrue(cancelled.isCancelled());
+        Assert.assertTrue(cancelled.isCompleted());
+        Assert.assertFalse(cancelled.isFaulted());
+        Assert.assertTrue(cancelled.isCancelled());
     }
 
     public void testSynchronousContinuation() {
@@ -57,32 +59,32 @@ public class TaskTest extends TestCase {
 
         complete.continueWith(new Continuation<Integer, Void>() {
             public Void then(Task<Integer> task) {
-                assertEquals(complete, task);
-                assertTrue(task.isCompleted());
-                assertEquals(5, task.getResult().intValue());
-                assertFalse(task.isFaulted());
-                assertFalse(task.isCancelled());
+                Assert.assertEquals(complete, task);
+                Assert.assertTrue(task.isCompleted());
+                Assert.assertEquals(5, task.getResult().intValue());
+                Assert.assertFalse(task.isFaulted());
+                Assert.assertFalse(task.isCancelled());
                 return null;
             }
         });
 
         error.continueWith(new Continuation<Integer, Void>() {
             public Void then(Task<Integer> task) {
-                assertEquals(error, task);
-                assertTrue(task.isCompleted());
-                assertTrue(task.getError() instanceof RuntimeException);
-                assertTrue(task.isFaulted());
-                assertFalse(task.isCancelled());
+                Assert.assertEquals(error, task);
+                Assert.assertTrue(task.isCompleted());
+                Assert.assertTrue(task.getError() instanceof RuntimeException);
+                Assert.assertTrue(task.isFaulted());
+                Assert.assertFalse(task.isCancelled());
                 return null;
             }
         });
 
         cancelled.continueWith(new Continuation<Integer, Void>() {
             public Void then(Task<Integer> task) {
-                assertEquals(cancelled, task);
-                assertTrue(cancelled.isCompleted());
-                assertFalse(cancelled.isFaulted());
-                assertTrue(cancelled.isCancelled());
+                Assert.assertEquals(cancelled, task);
+                Assert.assertTrue(cancelled.isCompleted());
+                Assert.assertFalse(cancelled.isFaulted());
+                Assert.assertTrue(cancelled.isCancelled());
                 return null;
             }
         });
@@ -100,12 +102,12 @@ public class TaskTest extends TestCase {
                 return Task.forResult(3);
             }
         });
-        assertTrue(first.isCompleted());
-        assertTrue(second.isCompleted());
-        assertTrue(third.isCompleted());
-        assertEquals(1, first.getResult().intValue());
-        assertEquals(2, second.getResult().intValue());
-        assertEquals(3, third.getResult().intValue());
+        Assert.assertTrue(first.isCompleted());
+        Assert.assertTrue(second.isCompleted());
+        Assert.assertTrue(third.isCompleted());
+        Assert.assertEquals(1, first.getResult().intValue());
+        Assert.assertEquals(2, second.getResult().intValue());
+        Assert.assertEquals(3, third.getResult().intValue());
     }
 
     public void testBackgroundCall() {
@@ -118,7 +120,7 @@ public class TaskTest extends TestCase {
                     }
                 }).continueWith(new Continuation<Integer, Void>() {
                     public Void then(Task<Integer> task) {
-                        assertEquals(5, task.getResult().intValue());
+                        Assert.assertEquals(5, task.getResult().intValue());
                         return null;
                     }
                 });
@@ -133,8 +135,8 @@ public class TaskTest extends TestCase {
                 return 5;
             }
         });
-        assertTrue(task.isCompleted());
-        assertEquals(5, task.getResult().intValue());
+        Assert.assertTrue(task.isCompleted());
+        Assert.assertEquals(5, task.getResult().intValue());
     }
 
     public void testBackgroundCallWaitingOnError() throws Exception {
@@ -144,8 +146,8 @@ public class TaskTest extends TestCase {
                 throw new RuntimeException();
             }
         });
-        assertTrue(task.isCompleted());
-        assertTrue(task.isFaulted());
+        Assert.assertTrue(task.isCompleted());
+        Assert.assertTrue(task.isFaulted());
     }
 
     public void testBackgroundCallWaitOnCancellation() throws Exception {
@@ -160,8 +162,8 @@ public class TaskTest extends TestCase {
                 return Task.cancelled();
             }
         });
-        assertTrue(task.isCompleted());
-        assertTrue(task.isCancelled());
+        Assert.assertTrue(task.isCompleted());
+        Assert.assertTrue(task.isCancelled());
     }
 
     public void testBackgroundError() {
@@ -173,8 +175,8 @@ public class TaskTest extends TestCase {
                     }
                 }).continueWith(new Continuation<Integer, Void>() {
                     public Void then(Task<Integer> task) {
-                        assertTrue(task.isFaulted());
-                        assertTrue(task.getError() instanceof IllegalStateException);
+                        Assert.assertTrue(task.isFaulted());
+                        Assert.assertTrue(task.getError() instanceof IllegalStateException);
                         return null;
                     }
                 });
@@ -200,12 +202,12 @@ public class TaskTest extends TestCase {
                 return Task.whenAll(tasks).continueWith(new Continuation<Void, Void>() {
                     @Override
                     public Void then(Task<Void> task) {
-                        assertTrue(task.isCompleted());
-                        assertFalse(task.isFaulted());
-                        assertFalse(task.isCancelled());
+                        Assert.assertTrue(task.isCompleted());
+                        Assert.assertFalse(task.isFaulted());
+                        Assert.assertFalse(task.isCancelled());
 
                         for (Task<Void> t : tasks) {
-                            assertTrue(t.isCompleted());
+                            Assert.assertTrue(t.isCompleted());
                         }
                         return null;
                     }
@@ -238,15 +240,15 @@ public class TaskTest extends TestCase {
                 return Task.whenAll(tasks).continueWith(new Continuation<Void, Void>() {
                     @Override
                     public Void then(Task<Void> task) {
-                        assertTrue(task.isCompleted());
-                        assertTrue(task.isFaulted());
-                        assertFalse(task.isCancelled());
+                        Assert.assertTrue(task.isCompleted());
+                        Assert.assertTrue(task.isFaulted());
+                        Assert.assertFalse(task.isCancelled());
 
-                        assertFalse(task.getError() instanceof AggregateException);
-                        assertEquals(error, task.getError());
+                        Assert.assertFalse(task.getError() instanceof AggregateException);
+                        Assert.assertEquals(error, task.getError());
 
                         for (Task<Void> t : tasks) {
-                            assertTrue(t.isCompleted());
+                            Assert.assertTrue(t.isCompleted());
                         }
                         return null;
                     }
@@ -279,17 +281,17 @@ public class TaskTest extends TestCase {
                 return Task.whenAll(tasks).continueWith(new Continuation<Void, Void>() {
                     @Override
                     public Void then(Task<Void> task) {
-                        assertTrue(task.isCompleted());
-                        assertTrue(task.isFaulted());
-                        assertFalse(task.isCancelled());
+                        Assert.assertTrue(task.isCompleted());
+                        Assert.assertTrue(task.isFaulted());
+                        Assert.assertFalse(task.isCancelled());
 
-                        assertTrue(task.getError() instanceof AggregateException);
-                        assertEquals(2, ((AggregateException) task.getError()).getErrors().size());
-                        assertEquals(error, ((AggregateException) task.getError()).getErrors().get(0));
-                        assertEquals(error, ((AggregateException) task.getError()).getErrors().get(1));
+                        Assert.assertTrue(task.getError() instanceof AggregateException);
+                        Assert.assertEquals(2, ((AggregateException) task.getError()).getErrors().size());
+                        Assert.assertEquals(error, ((AggregateException) task.getError()).getErrors().get(0));
+                        Assert.assertEquals(error, ((AggregateException) task.getError()).getErrors().get(1));
 
                         for (Task<Void> t : tasks) {
-                            assertTrue(t.isCompleted());
+                            Assert.assertTrue(t.isCompleted());
                         }
                         return null;
                     }
@@ -325,12 +327,12 @@ public class TaskTest extends TestCase {
                 return Task.whenAll(tasks).continueWith(new Continuation<Void, Void>() {
                     @Override
                     public Void then(Task<Void> task) {
-                        assertTrue(task.isCompleted());
-                        assertFalse(task.isFaulted());
-                        assertTrue(task.isCancelled());
+                        Assert.assertTrue(task.isCompleted());
+                        Assert.assertFalse(task.isFaulted());
+                        Assert.assertTrue(task.isCancelled());
 
                         for (Task<Void> t : tasks) {
-                            assertTrue(t.isCompleted());
+                            Assert.assertTrue(t.isCompleted());
                         }
                         return null;
                     }
@@ -359,9 +361,9 @@ public class TaskTest extends TestCase {
                 }
                 result = result.continueWith(new Continuation<Void, Void>() {
                     public Void then(Task<Void> task) {
-                        assertEquals(20, sequence.size());
+                        Assert.assertEquals(20, sequence.size());
                         for (int i = 0; i < 20; i++) {
-                            assertEquals(i, sequence.get(i).intValue());
+                            Assert.assertEquals(i, sequence.get(i).intValue());
                         }
                         return null;
                     }
@@ -381,19 +383,19 @@ public class TaskTest extends TestCase {
         Task<Integer> error = Task.<Integer> forError(new IllegalStateException()).onSuccess(continuation);
         Task<Integer> cancelled = Task.<Integer> cancelled().onSuccess(continuation);
 
-        assertTrue(complete.isCompleted());
-        assertEquals(6, complete.getResult().intValue());
-        assertFalse(complete.isFaulted());
-        assertFalse(complete.isCancelled());
+        Assert.assertTrue(complete.isCompleted());
+        Assert.assertEquals(6, complete.getResult().intValue());
+        Assert.assertFalse(complete.isFaulted());
+        Assert.assertFalse(complete.isCancelled());
 
-        assertTrue(error.isCompleted());
-        assertTrue(error.getError() instanceof RuntimeException);
-        assertTrue(error.isFaulted());
-        assertFalse(error.isCancelled());
+        Assert.assertTrue(error.isCompleted());
+        Assert.assertTrue(error.getError() instanceof RuntimeException);
+        Assert.assertTrue(error.isFaulted());
+        Assert.assertFalse(error.isCancelled());
 
-        assertTrue(cancelled.isCompleted());
-        assertFalse(cancelled.isFaulted());
-        assertTrue(cancelled.isCancelled());
+        Assert.assertTrue(cancelled.isCompleted());
+        Assert.assertFalse(cancelled.isFaulted());
+        Assert.assertTrue(cancelled.isCancelled());
     }
 
     public void testOnSuccessTask() {
@@ -406,19 +408,19 @@ public class TaskTest extends TestCase {
         Task<Integer> error = Task.<Integer> forError(new IllegalStateException()).onSuccessTask(continuation);
         Task<Integer> cancelled = Task.<Integer> cancelled().onSuccessTask(continuation);
 
-        assertTrue(complete.isCompleted());
-        assertEquals(6, complete.getResult().intValue());
-        assertFalse(complete.isFaulted());
-        assertFalse(complete.isCancelled());
+        Assert.assertTrue(complete.isCompleted());
+        Assert.assertEquals(6, complete.getResult().intValue());
+        Assert.assertFalse(complete.isFaulted());
+        Assert.assertFalse(complete.isCancelled());
 
-        assertTrue(error.isCompleted());
-        assertTrue(error.getError() instanceof RuntimeException);
-        assertTrue(error.isFaulted());
-        assertFalse(error.isCancelled());
+        Assert.assertTrue(error.isCompleted());
+        Assert.assertTrue(error.getError() instanceof RuntimeException);
+        Assert.assertTrue(error.isFaulted());
+        Assert.assertFalse(error.isCancelled());
 
-        assertTrue(cancelled.isCompleted());
-        assertFalse(cancelled.isFaulted());
-        assertTrue(cancelled.isCancelled());
+        Assert.assertTrue(cancelled.isCompleted());
+        Assert.assertFalse(cancelled.isFaulted());
+        Assert.assertTrue(cancelled.isCancelled());
     }
 
     public void testContinueWhile() {
@@ -436,7 +438,7 @@ public class TaskTest extends TestCase {
                     }
                 }).continueWith(new Continuation<Void, Void>() {
                     public Void then(Task<Void> task) throws Exception {
-                        assertEquals(10, count.get());
+                        Assert.assertEquals(10, count.get());
                         return null;
                     }
                 });
@@ -454,11 +456,10 @@ public class TaskTest extends TestCase {
                     }
                 }, new Continuation<Void, Task<Void>>() {
                     public Task<Void> then(Task<Void> task) throws Exception {
-                                                                  count.incrementAndGet();
-                                                                  return null;
-                                                              }
-                                                          }
-                );
+                        count.incrementAndGet();
+                        return null;
+                    }
+                });
             }
         });
     }
