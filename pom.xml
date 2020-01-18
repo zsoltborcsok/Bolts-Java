@@ -3,9 +3,11 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>org.nting.BoltsFramework</groupId>
-    <artifactId>Bolts-Java</artifactId>
-    <version>1.0.2</version>
+    <groupId>org.nting</groupId>
+    <artifactId>bolts</artifactId>
+    <packaging>jar</packaging>
+    <version>1.0.0-SNAPSHOT</version>
+    <name>Bolts Java Framework</name>
 
     <dependencies>
         <dependency>
